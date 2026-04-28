@@ -24,11 +24,11 @@
 
 <br />
 
-<p align="center">
+<!-- <p align="center">
   <img src="./skillsmith.gif" width="720" alt="Screen recording: running Skillsmith on a repository" />
   <br />
   <sub><em>CLI demo — <code>npx skillsmith</code> on a sample repo</em></sub>
-</p>
+</p> -->
 
 
 
