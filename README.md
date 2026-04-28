@@ -25,13 +25,12 @@
 <br />
 
 <p align="center">
-  <!-- Replace with a screen recording GIF once available -->
-  <img src="https://via.placeholder.com/720x405/0d1117/58a6ff?text=Demo+GIF+%E2%80%94+record+npx+skillsmith+on+a+repo" width="720" alt="Skillsmith demo (placeholder)" />
+  <img src="./skillsmith.gif" width="720" alt="Screen recording: running Skillsmith on a repository" />
   <br />
-  <sub><em>Placeholder — swap for a short GIF of a real run.</em></sub>
+  <sub><em>CLI demo — <code>npx skillsmith</code> on a sample repo</em></sub>
 </p>
 
----
+
 
 > [!NOTE]
 > **Most AI coding tools fail on real codebases** because they don’t know your project’s conventions. Skillsmith reads your repo, extracts the conventions, and generates rules files your assistant can actually use.
