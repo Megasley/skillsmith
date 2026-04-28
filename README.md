@@ -43,7 +43,7 @@ export ANTHROPIC_API_KEY=sk-ant-...   # or OPENAI_API_KEY; Ollama needs no key
 npx skillsmith . --yes
 ```
 
-That analyzes the current directory and writes **`.claude/CLAUDE.md`** (Claude Code layout), `.cursorrules`, `AGENTS.md`, and `.github/copilot-instructions.md`. Point at a remote repo with `npx skillsmith vercel/ai-chatbot --yes`.
+That analyzes the current directory and writes **`.claude/CLAUDE.md`** (Claude Code layout), `.cursorrules`, `AGENTS.md`, and `.github/copilot-instructions.md`. By default it also writes **task subagents**: **`agents.json`**, **`.claude/agents/*.md`** (Claude Code), and optionally **`.cursor/rules/skillsmith-*.mdc`** if you pass **`--cursor`**. Point at a remote repo with `npx skillsmith vercel/ai-chatbot --yes`.
 
 ### Claude Code file layout & `--scope`
 
@@ -60,7 +60,9 @@ The CLI creates **`.claude/`** under the output directory when needed. Global sc
 ## Features
 
 - **Local or GitHub** — analyze a folder or `owner/repo` / full GitHub URL (optional `GITHUB_TOKEN` for rate limits).
-- **Four formats** — `.claude/CLAUDE.md` (Claude Code), `.cursorrules`, `AGENTS.md`, `.github/copilot-instructions.md` (Copilot).
+- **Four rule adapters** — `.claude/CLAUDE.md` (Claude Code), `.cursorrules`, `AGENTS.md`, `.github/copilot-instructions.md` (Copilot).
+- **Task subagents** — LLM-generated **Claude Code** agent files under **`.claude/agents/`**, a portable **`agents.json`** manifest, and optional **Cursor** **`.mdc`** rules (`--cursor`). Schema: [`docs/agents-schema.md`](./docs/agents-schema.md).
+- **`compile` command** — re-emit **Cursor** or **Claude Code** files from an existing **`agents.json`** without re-running analysis (`skillsmith compile --from agents.json --target cursor`).
 - **Multi-provider** — Anthropic (default), OpenAI, or local **Ollama**.
 - **Detects existing tooling** — skips redundant outputs when your repo already declares Cursor / Claude / Copilot rules (override with `--formats`).
 - **Cost preview** — estimated spend before the LLM runs.
@@ -80,7 +82,7 @@ Get a key at [console.anthropic.com](https://console.anthropic.com) or [platform
 
 We ship **real outputs** from running Skillsmith on five public repos (Next.js app, UI monorepo, FastAPI, Rails, Hono) in [`examples/`](./examples/). Use them to judge tone and specificity before you run it yourself.
 
-From the [shadcn-ui/ui](./examples/shadcn-ui/) example — notice paths and stack detail, not generic advice:
+From the [shadcn-ui/ui](./examples/shadcn-ui-ui/) example — notice paths and stack detail, not generic advice:
 
 ```markdown
 ### Layout and architecture
@@ -102,11 +104,12 @@ See [`examples/README.md`](./examples/README.md) for the full table, reproducibi
 
 | Command | Description |
 | --------|------------- |
-| `skillsmith` / `skillsmith generate [target]` | Analyze a **local directory** (default `.`) or **GitHub** (`owner/repo`, `https://github.com/...`) and write rules files. Default subcommand. |
+| `skillsmith` / `skillsmith generate [target]` | Analyze a **local directory** (default `.`) or **GitHub** (`owner/repo`, `https://github.com/...`), write rule files and **subagent outputs** (unless disabled). Default subcommand. |
+| `skillsmith compile` | Read **`agents.json`** and write **only** subagent files for **`--target cursor`** or **`claude-code`** (no LLM, no repo fetch). |
 | `skillsmith init` | Interactive wizard: writes `~/.skillsmith/config.json` (provider, optional API key, default formats, default output dir). |
-| `skillsmith formats` | Print supported output format IDs and descriptions. |
+| `skillsmith formats` | Print supported **adapter** IDs for `-f` / `--formats`. |
 
-Flags that start with `-` without a subcommand are treated as **`generate`** flags (e.g. `skillsmith -y .`).
+Flags that start with `-` without a subcommand are treated as **`generate`** flags (e.g. `skillsmith -y .`). Run **`skillsmith --help`** or **`skillsmith generate --help`** for the full option list and examples.
 
 ### `generate` flags
 
@@ -114,14 +117,27 @@ Flags that start with `-` without a subcommand are treated as **`generate`** fla
 | -----|------------- |
 | `-k, --api-key <key>` | API key for Anthropic/OpenAI; overrides env and config file. |
 | `-p, --provider <name>` | `anthropic` (default), `openai`, or `ollama`. |
-| `-f, --formats <csv>` | Comma-separated: `claude-md`, `cursorrules`, `agents-md`, `copilot`. Invalid tokens are ignored; if none left, all formats are used. |
+| `-f, --formats <csv>` | Comma-separated **rule adapters**: `claude-md`, `cursorrules`, `agents-md`, `copilot`. Invalid tokens are ignored; if none left, all are used. |
 | `-o, --output-dir <dir>` | Where to write files (relative to current working directory). |
 | `-y, --yes` | Skip the cost / continue confirmation. |
-| `--json` | Machine-readable summary on stdout. |
-| `-q, --quiet` | Less noise (writes still printed). |
+| `--json` | Machine-readable summary on stdout (includes `files`, `subagents`, `subagentsSummary`). |
+| `-q, --quiet` | Less noise; main writes and subagent summary still print. |
 | `--scope <mode>` | `project` (default), `global`, or `local` — see [Claude Code file layout](#claude-code-file-layout--scope). |
 | `--no-reduce` | Skip post-extract rule reduction on `things_to_avoid`. |
+| `--no-subagents` | Skip LLM subagent **definition** generation (task patterns still detected). |
+| `--no-subagent-output` | Do not write `.claude/agents/`, `agents.json`, or Cursor `.mdc` files. |
+| `--cursor` | When writing subagents, also write `.cursor/rules/skillsmith-*.mdc`. |
 | `--debug` | During rule reduction, print removed rules and reasons to stderr. |
+
+### `compile` flags
+
+| Flag | Description |
+| -----|------------- |
+| `--from <path>` | Path to `agents.json` (default: `agents.json` in cwd). |
+| `--target <name>` | **`cursor`** (`.mdc` under `.cursor/rules/`) or **`claude-code`** (`.md` under `.claude/agents/`). Required. |
+| `-o, --output-dir <dir>` | Treat as project root for output paths (default: directory containing `--from`). |
+| `--json` | Print JSON with `files`, `agentCount`, etc. |
+| `-q, --quiet` | Minimal stdout. |
 
 ### Config file
 
@@ -151,27 +167,31 @@ Precedence: **CLI flags → environment variables → config file → defaults.*
 
 ## Web
 
-The hosted app mirrors the same **`@skillsmith/core`** pipeline as the CLI: **[skillsmith.vercel.app](https://skillsmith.vercel.app)**. Use it if you prefer a UI; use the CLI for scripts, CI, or air‑gapped workflows (with Ollama).
+The hosted app mirrors the same **`@skillsmith/core`** pipeline as the CLI: **[skillsmith.vercel.app](https://skillsmith.vercel.app)**. After a successful run it shows **Subagents** (Claude `.md` previews, **`agents.json`**, optional Cursor `.mdc` when enabled) below the main output tabs. Use the UI for exploration; use the CLI for scripts, CI, or air‑gapped workflows (with Ollama).
 
 ## How it works
 
 1. **Inventory** — Infer stack from the file tree and manifests (package files, lockfiles, etc.).
 2. **Sample** — Select representative source files (caps on count and size).
 3. **Extract** — LLM pass: conventions, naming, patterns, things to avoid — grounded in the sample.
-4. **Synthesize** — Render each chosen adapter (`.claude/CLAUDE.md`, Cursor rules, etc.) from the structured result.
+4. **Subagents** (optional) — From detected task patterns, LLM defines **Claude Code–style** subagents; compiled to **`.claude/agents/*.md`**, **`agents.json`**, and optionally **`.cursor/rules/*.mdc`**.
+5. **Synthesize** — Render each chosen adapter (`.claude/CLAUDE.md`, Cursor rules, etc.) from the structured result.
 
 ```text
-  ┌──────────┐     ┌────────┐     ┌─────────┐     ┌─────────────┐
-  │ Inventory│ ──► │ Sample │ ──► │ Extract │ ──► │ Synthesize  │
-  │  (LLM)   │     │ (code) │     │  (LLM)  │     │ (adapters)  │
-  └──────────┘     └────────┘     └─────────┘     └──────┬──────┘
-                                                         │
-                         .claude/CLAUDE.md / .cursorrules / AGENTS.md / Copilot
+  ┌──────────┐     ┌────────┐     ┌─────────┐     ┌──────────┐     ┌─────────────┐
+  │ Inventory│ ──► │ Sample │ ──► │ Extract │ ──► │ Subagents│ ──► │ Synthesize  │
+  │  (LLM)   │     │ (code) │     │  (LLM)  │     │  (LLM)   │     │ (adapters)  │
+  └──────────┘     └────────┘     └─────────┘     └──────────┘     └──────┬──────┘
+       (skip subagent LLM with --no-subagents)                               │
+                                                                             ▼
+                    .claude/CLAUDE.md / .cursorrules / AGENTS.md / Copilot
+                    + agents.json + .claude/agents/ (+ optional .cursor/rules/)
 ```
 
 ## Docs
 
-Architecture, package layout, and pipeline notes: **[docs/README.md](./docs/README.md)**.
+- Architecture and package layout: **[docs/README.md](./docs/README.md)**  
+- **`agents.json` schema** and **`compile` targets**: **[docs/agents-schema.md](./docs/agents-schema.md)**
 
 ## Provider quality
 
@@ -201,7 +221,7 @@ Yes, locally: `skillsmith /path/to/repo`. Don’t commit secrets; treat API keys
 After major refactors, dependency overhauls, or when onboarding — there’s no automatic schedule yet.
 
 **Does it support [other AI tool]?**  
-Today: Claude, Cursor, generic `AGENTS.md`, Copilot instructions. More adapters (e.g. Aider, Continue, Windsurf) are on the [roadmap](#roadmap); PRs for new formats are welcome.
+Today: Claude (project + **subagents**), Cursor (`.cursorrules` + optional **`.mdc`** rules), generic `AGENTS.md`, Copilot instructions. More adapters (e.g. Aider, Continue, Windsurf) are on the [roadmap](#roadmap); PRs for new formats are welcome.
 
 ## Roadmap
 
