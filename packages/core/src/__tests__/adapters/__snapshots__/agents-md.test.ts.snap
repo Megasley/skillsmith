@@ -1,0 +1,108 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`renderAgentsMd > matches snapshot 1`] = `
+"# AGENTS.md
+
+## Overview
+
+- **Language:** TypeScript
+- **Project type:** web-app
+- **Framework:** Next.js 14 App Router
+- **Primary dependencies:** next, react, tailwindcss, @radix-ui/react-slot, class-variance-authority, clsx, tailwind-merge
+
+This file is for autonomous coding agents. Prefer the conventions and paths below over generic stack advice.
+
+## Setup
+
+Use the commands below when they are present; they are derived from project manifests in the repo snapshot.
+
+## Commands
+
+### Install
+
+\`\`\`bash
+pnpm install
+\`\`\`
+
+### Dev server
+
+\`\`\`bash
+pnpm dev
+\`\`\`
+
+### Build
+
+\`\`\`bash
+pnpm build
+\`\`\`
+
+### Test (full suite)
+
+\`\`\`bash
+pnpm test
+\`\`\`
+
+### Test (single path)
+
+\`\`\`bash
+pnpm test -- <path>
+\`\`\`
+
+### Lint
+
+\`\`\`bash
+pnpm lint
+\`\`\`
+
+
+
+## Conventions
+
+### Naming
+
+- **Files:** Kebab-case for \`app/\` route segments; PascalCase for components under \`components/\`. Colocate feature modules under \`features/<name>/\`.
+- **Components:** PascalCase file names matching the default export. Prefer composing primitives from \`components/ui/\` (shadcn) rather than one-off styled divs.
+- **Functions:** camelCase for utilities and hooks (\`useTheme\`). Event handlers prefixed with \`handle\` or passed as \`onX\` props.
+- **Variables:** camelCase locals; SCREAMING_SNAKE only for true constants. Prefer \`const\` and narrow types with \`satisfies\` where helpful.
+
+### Structure and behavior
+
+Routes and layouts live in \`app/\` (App Router). Shared UI primitives live in \`components/ui/\` (shadcn). Shared helpers in \`lib/\` (e.g. \`lib/utils.ts\` with \`cn()\`). Global styles in \`app/globals.css\`; Tailwind v4 via \`@tailwindcss/postcss\`.
+
+**Error handling:** Use \`try/catch\` in Server Actions and surface user-facing errors with Sonner toasts on the client. Prefer returning typed Result-like objects from server utilities when batching work.
+
+**State:** React state and context for local UI; server state from \`fetch\` in Server Components. No global client store unless a route truly needs it.
+
+### Shared building blocks
+
+- **cn() helper** (\`lib/utils.ts\`): Merge Tailwind classes with \`tailwind-merge\` to avoid conflicting utilities.
+- **Button variants** (\`components/ui/button.tsx\`): Use \`class-variance-authority\` (cva) for size and variant props on shadcn \`Button\`.
+- **App layout shell** (\`app/layout.tsx\`): Root layout wraps providers (\`ThemeProvider\`, \`Toaster\`) and font loading.
+
+**Things agents must not do:**
+
+- Do not hand-edit \`components.json\` or generated shadcn files without running the CLI.
+- Avoid fetching in Client Components when the same data can be loaded in a Server Component.
+- Do not add new CSS files per page; extend Tailwind tokens or use \`cn()\` instead.
+
+## Testing
+
+- **Runner / stack:** Vitest
+
+Vitest + Testing Library for components; colocate \`*.test.tsx\` next to components or under \`__tests__/\`. Run \`pnpm test\` from repo root.
+
+Run the full test suite before proposing a merge; fix failures you introduce.
+
+## Pull Request Guidelines
+
+- Keep changes scoped; follow the file layout and naming rules above.
+- Reuse abstractions listed under **Shared building blocks** instead of duplicating logic.
+- Address every **Things agents must not do** item—do not introduce new violations.
+- For the common workflow **Add a shadcn UI primitive**, follow:
+
+1. Run \`pnpm dlx shadcn@latest add <component>\` from the repo root.
+2. Import from \`@/components/ui/<component>\` in your feature code.
+3. Use \`cn()\` from \`@/lib/utils\` when merging classes.
+4. Run \`pnpm lint\` and \`pnpm test\` before opening a PR.
+"
+`;

@@ -1,0 +1,11 @@
+{
+  "name": "skillsmith-monorepo",
+  "version": "0.2.0",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "dev": "pnpm --filter web dev",
+    "build": "pnpm -r run build",
+    "lint": "pnpm --filter web lint"
+  }
+}

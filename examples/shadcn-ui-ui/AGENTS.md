@@ -1,0 +1,127 @@
+# AGENTS.md
+
+## Overview
+
+- **Language:** TypeScript
+- **Project type:** web-app
+- **Framework:** Next.js App Router
+- **Primary dependencies:** react, tailwindcss, radix-ui, fumadocs-mdx, recharts, zod, turbo, vitest, changeset, motion
+
+This file is for autonomous coding agents. Prefer the conventions and paths below over generic stack advice.
+
+## Setup
+
+Use the commands below when they are present; they are derived from project manifests in the repo snapshot.
+
+## Commands
+
+### Install
+
+```bash
+pnpm install
+```
+
+### Dev server
+
+```bash
+pnpm dev
+```
+
+### Build
+
+```bash
+pnpm build
+```
+
+### Test (full suite)
+
+```bash
+pnpm test
+```
+
+### Test (single path)
+
+```bash
+pnpm test -- <path>
+```
+
+### Lint
+
+```bash
+pnpm lint
+```
+
+### Lint (auto-fix)
+
+```bash
+pnpm lint:fix
+```
+
+### Typecheck
+
+```bash
+pnpm typecheck
+```
+
+
+
+## Conventions
+
+### Naming
+
+- **Files:** kebab-case for all files (parse-preset-input.ts, merge-theme.ts, preset-query.ts); test files colocated with source as *.test.ts; route handlers named route.ts; index files used for barrel exports
+- **Components:** PascalCase React components (ArticleDirectory, MediaLibrary, CardsDemo); prefixed with feature area when disambiguating (CardsActivityGoal, CardsCalendar)
+- **Functions:** camelCase for utilities and helpers (buildV0Payload, parsePresetInput, resolvePresetOverrides, buildTheme, getItemsForBase); async server functions prefixed with get/build
+- **Variables:** SCREAMING_SNAKE_CASE for module-level constants (ALLOWED_ITEM_TYPES, EXCLUDED_ITEMS, PREVIEW_FONTS, FONT_HEADING_OPTIONS, DEFAULT_CONFIG); camelCase for local variables
+
+### Structure and behavior
+
+Monorepo managed by Turbo with pnpm workspaces; main app lives in apps/v4 using Next.js App Router with route groups like (app), (create), and (styles). Library code is colocated in lib/ subdirectories next to the route segment that owns it (e.g. apps/v4/app/(app)/create/lib/). Registry components live under apps/v4/registry/bases/ organized by base name (base, radix, base-nova, base-sera). Shared UI primitives are imported from @/registry/bases/<base>/ui/<component>.
+
+**Error handling:** Functions return null or a discriminated { success, data, error } shape (as seen in parseDesignSystemConfig) rather than throwing; server-side registry functions throw with descriptive messages when required config entries are missing (buildTheme, createFontOption).
+
+**State:** Local React.useState for UI selection state (MediaLibrary selectedId); global theme/layout state provided via context providers (ActiveThemeProvider, LayoutProvider, ThemeProvider) composed in apps/v4/app/layout.tsx; URL search params managed through nuqs (NuqsAdapter).
+
+### Shared building blocks
+
+- **Registry Index dynamic import** (`apps/v4/app/(app)/create/lib/api.ts`): Lazy-loads the per-base component index to avoid bundling all bases at once; used in every server-side registry lookup
+- **registryItemSchema.parse validation** (`apps/v4/app/(app)/create/lib/merge-theme.ts`): Validates and narrows registry item shapes using the shadcn/schema Zod schema before returning from server functions
+- **Route group re-export barrel** (`apps/v4/app/(create)/lib/fonts.ts`): Thin re-export files in alternate route groups (e.g. (create)/lib/) that forward to the canonical (app)/create/lib/ implementation to avoid duplication
+- **Preview wrapper layout pattern** (`apps/v4/app/(app)/(styles)/sera/audience-analytics/index.tsx`): Each style preview page wraps content in a div with className='preview theme-<name> @container/preview ...' plus a PreviewHeader and Separator, providing consistent theming and container queries
+- **createFontOption factory** (`apps/v4/app/(app)/create/lib/fonts.ts`): Combines a FONT_DEFINITIONS metadata entry with a next/font/google instance into a typed font option object; centralises font registration
+- **Discriminated result object from parse functions** (`apps/v4/app/(create)/init/parse-config.test.ts`): Config parsers return { success: true, data } | { success: false, error: string } so callers can branch without try/catch
+- **Provider composition in root layout** (`apps/v4/app/layout.tsx`): All global context providers (ThemeProvider, LayoutProvider, ActiveThemeProvider, NuqsAdapter, TooltipProvider) are stacked in apps/v4/app/layout.tsx rather than scattered across the tree
+
+**Things agents must not do:**
+
+- Don't import from @/registry/bases/__index__ statically at module scope — always use dynamic import() inside the function to avoid bundling all bases
+- Don't use <img> elements directly; the ESLint rule @next/next/no-img-element is intentionally disabled only for the main app — templates still enforce it
+- Don't add @typescript-eslint/no-unused-vars errors as a gate; the rule is turned off project-wide — rely on TypeScript strict checks via pnpm typecheck instead
+- Don't bypass the registryItemSchema.parse call when returning registry items from server functions; raw index values are unvalidated
+- Don't use default type imports where inline type imports are required; @typescript-eslint/consistent-type-imports is set to error with fixStyle: inline-type-imports
+- Don't run tests directly with vitest in isolation for the full suite; the root test script requires the registry to be built first (pnpm --filter=v4 registry:build) and the dev server to be running
+- Don't hardcode CSS custom property values inline; use the --spacing() and CSS variable patterns (e.g. [--gap:--spacing(4)]) consistent with the preview wrapper pattern
+
+## Testing
+
+- **Runner / stack:** Vitest
+
+Vitest is used for all unit and integration tests; test files are colocated with source (*.test.ts beside the module); the root test script runs pnpm --filter=v4 registry:build then start-server-and-test v4:dev http://localhost:4000 test:dev; vi.mock is used to stub shadcn/utils transforms and registry index imports; vi.stubGlobal stubs fetch for payload-building tests.
+
+Run the full test suite before proposing a merge; fix failures you introduce.
+
+## Pull Request Guidelines
+
+- Keep changes scoped; follow the file layout and naming rules above.
+- Reuse abstractions listed under **Shared building blocks** instead of duplicating logic.
+- Address every **Things agents must not do** item—do not introduce new violations.
+- For the common workflow **Add a new style preview page under a (styles) route group**, follow:
+
+1. Create a new directory under apps/v4/app/(app)/(styles)/<style-name>/<page-name>/.
+2. Add an index.tsx that exports a named PascalCase component; wrap content in <div className="preview theme-<name> @container/preview w-full flex-1 bg-muted pt-4 font-sans ring-1 ring-foreground/5 ...">.
+3. Import Separator from @/styles/<base-name>/ui/separator and add a PreviewHeader component in a components/ subdirectory.
+4. Import any UI primitives from @/registry/bases/<base>/ui/<component> — never from node_modules directly.
+5. If the page needs server data, add a lib/api.ts using dynamic import of @/registry/bases/__index__ and validate results with registryItemSchema.parse from shadcn/schema.
+6. If adding URL-driven config, add or extend a lib/search-params.ts and re-export it from the (create)/lib/ barrel if needed by the /create route.
+7. Run pnpm v4:dev to verify the page renders, then pnpm typecheck and pnpm lint to confirm no type or lint errors.
+8. Run pnpm test:dev (after the dev server is up) or the full pnpm test to execute the Vitest suite and confirm nothing regressed.

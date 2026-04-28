@@ -1,0 +1,109 @@
+# AGENTS.md
+
+## Overview
+
+- **Language:** TypeScript
+- **Project type:** web-app
+- **Framework:** Next.js 16 App Router
+- **Primary dependencies:** ai, @ai-sdk/react, next-auth, drizzle-orm, radix-ui, tailwindcss, framer-motion, zod, swr, shiki
+
+This file is for autonomous coding agents. Prefer the conventions and paths below over generic stack advice.
+
+## Setup
+
+Use the commands below when they are present; they are derived from project manifests in the repo snapshot.
+
+## Commands
+
+### Install
+
+```bash
+pnpm install
+```
+
+### Dev server
+
+```bash
+pnpm dev
+```
+
+### Build
+
+```bash
+pnpm build
+```
+
+### Test (full suite)
+
+```bash
+pnpm test
+```
+
+### Test (single path)
+
+```bash
+pnpm test -- <path>
+```
+
+
+
+## Conventions
+
+### Naming
+
+- **Files:** kebab-case for component and utility files (e.g. auth-form.tsx, use-mobile.ts, data-stream-provider.tsx); route files follow Next.js App Router conventions (route.ts, page.tsx, layout.tsx, actions.ts)
+- **Components:** PascalCase React components (e.g. AppSidebar, ChatShell, DataStreamProvider, SidebarInset); grouped under components/chat/ or components/ui/
+- **Functions:** camelCase for utilities and hooks (e.g. generateUUID, fetchWithErrorHandlers, useIsMobile, getCapabilities); PascalCase only for React components
+- **Variables:** camelCase for local variables and module-level constants (e.g. chatModel, requestBody, mockUsage); SCREAMING_SNAKE_CASE for true constants (e.g. DEFAULT_CHAT_MODEL, MOBILE_BREAKPOINT, DUMMY_PASSWORD)
+
+### Structure and behavior
+
+Routes live under app/(auth)/ and app/(chat)/ route groups, each with their own layout.tsx, actions.ts, and api/ subdirectories. Shared business logic is in lib/ (lib/ai/, lib/db/, lib/utils.ts, lib/errors.ts). React components are split between components/chat/ (feature components) and components/ui/ (Radix-based primitives). Custom hooks live in hooks/ at the project root.
+
+**Error handling:** All API routes use a custom ChatbotError class (lib/errors.ts) with typed error codes in the format 'category:resource' (e.g. 'unauthorized:chat', 'forbidden:document') and call .toResponse() to produce HTTP responses. Server actions return typed discriminated-union status objects (e.g. LoginActionState with 'idle' | 'success' | 'failed' | 'invalid_data') rather than throwing to the client.
+
+**State:** Client data fetching uses SWR via the fetcher utility from lib/utils.ts which throws ChatbotError on non-ok responses. AI streaming state is managed through the AI SDK's useChat/@ai-sdk/react hooks and a DataStreamProvider context; form state uses React's useActionState hooked to Next.js Server Actions.
+
+### Shared building blocks
+
+- **ChatbotError** (`app/(chat)/api/chat/route.ts`): Typed error class with colon-namespaced error codes (e.g. 'unauthorized:chat') that serializes to HTTP responses via .toResponse(); used in every API route for consistent error shapes
+- **Zod request body schemas** (`app/(chat)/api/chat/schema.ts`): Inline zod schemas (e.g. postRequestBodySchema, voteSchema, documentSchema) validate and parse all incoming API request bodies before any business logic runs
+- **Server Actions with discriminated-union state** (`app/(auth)/actions.ts`): Next.js 'use server' actions return typed status union objects consumed by useActionState on the client, avoiding thrown errors crossing the server/client boundary
+- **Drizzle ORM schema with InferSelectModel types** (`lib/db/schema.ts`): All DB tables defined in lib/db/schema.ts using drizzle-orm/pg-core; exported TypeScript types (User, Chat, DBMessage, etc.) are derived via InferSelectModel to stay in sync with the schema
+- **cn() utility for conditional Tailwind classes** (`lib/utils.ts`): Wraps clsx + tailwind-merge to safely compose Tailwind class strings without conflicts; used throughout all component files
+- **MockLanguageModelV3 test models** (`lib/ai/models.test.ts`): Reusable mock AI model instances (chatModel, reasoningModel, titleModel) using MockLanguageModelV3 and simulateReadableStream for deterministic AI response testing
+- **Route group layouts with async auth** (`app/(chat)/layout.tsx`): Layout components (app/(chat)/layout.tsx, app/(auth)/layout.tsx) call auth() server-side to gate rendering and pass session data down as props, avoiding redundant auth calls in child pages
+- **ChatModel registry with gatewayOrder** (`lib/ai/models.ts`): Centralized chatModels array in lib/ai/models.ts defines all available models with provider, gatewayOrder, and optional reasoningEffort; allowedModelIds Set and modelsByProvider map are derived from it for validation and grouping
+
+**Things agents must not do:**
+
+- Don't add new chat models outside the chatModels array in lib/ai/models.ts — model IDs not in allowedModelIds are silently replaced with DEFAULT_CHAT_MODEL in the chat API route
+- Don't return raw Error objects or untyped JSON error shapes from API routes — always use ChatbotError with a typed error code and call .toResponse()
+- Don't throw errors from Server Actions to the client — return a typed status union object instead (matching the pattern in app/(auth)/actions.ts and app/(chat)/actions.ts)
+- Don't call auth() inside page.tsx files in the (chat) group — the SidebarShell server component in app/(chat)/layout.tsx already resolves the session and should pass it down
+- Don't write unit tests for components or API routes — the repo uses Playwright e2e tests exclusively (pnpm test); mock AI responses via MockLanguageModelV3 in lib/ai/models.test.ts
+- Don't use page.locator() with brittle CSS selectors in Playwright tests — use getByTestId() with data-testid attributes or semantic locators like getByRole() and getByPlaceholder()
+- Don't run database migrations manually in production — the build script (pnpm build) runs tsx lib/db/migrate automatically before next build
+- Don't add new DB tables without running pnpm db:generate to produce a migration file — direct pnpm db:push bypasses migration history and should only be used in development
+
+## Testing
+
+- **Runner / stack:** Playwright
+
+End-to-end tests only, using Playwright via pnpm test (which sets PLAYWRIGHT=True before running playwright test). Tests in tests/e2e/ use data-testid selectors (e.g. getByTestId('multimodal-input'), getByTestId('send-button')) and page.route() for API mocking. Unit-level model mocks use MockLanguageModelV3 from ai/test with simulateReadableStream, defined in lib/ai/models.test.ts and tests/prompts/utils.
+
+Run the full test suite before proposing a merge; fix failures you introduce.
+
+## Pull Request Guidelines
+
+- Keep changes scoped; follow the file layout and naming rules above.
+- Reuse abstractions listed under **Shared building blocks** instead of duplicating logic.
+- Address every **Things agents must not do** item—do not introduce new violations.
+- For the common workflow **Add a new AI tool to the chat API**, follow:
+
+1. Create the tool file under lib/ai/tools/<tool-name>.ts exporting a Vercel AI SDK tool() object with a description, parameters (zod schema), and execute function.
+2. Import the new tool in app/(chat)/api/chat/route.ts and add it to both the tools: {} object passed to streamText and the experimental_activeTools array (guard with supportsTools/isReasoningModel flags if needed).
+3. If the tool requires session or dataStream access, follow the factory pattern used by createDocument/editDocument: export a function that accepts { session, dataStream, modelId } and returns the tool object.
+4. Add any new DB queries the tool needs to lib/db/queries.ts using drizzle-orm, and if new tables are required, add them to lib/db/schema.ts then run pnpm db:generate followed by pnpm db:migrate.
+5. Add a MockLanguageModelV3 response chunk for the new tool in tests/prompts/utils.ts so the Playwright tests can exercise the tool flow.
+6. Write a Playwright e2e test in tests/e2e/ using getByTestId() selectors to verify the tool's UI output, then run pnpm test to validate.

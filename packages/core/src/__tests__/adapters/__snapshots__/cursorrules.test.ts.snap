@@ -1,0 +1,36 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`renderCursorrules > matches snapshot 1`] = `
+"This is a TypeScript web-app repository using Next.js 14 App Router.
+
+When creating or renaming files, follow: Kebab-case for \`app/\` route segments; PascalCase for components under \`components/\`. Colocate feature modules under \`features/<name>/\`.
+When building React components, follow: PascalCase file names matching the default export. Prefer composing primitives from \`components/ui/\` (shadcn) rather than one-off styled divs.
+When naming functions and hooks, follow: camelCase for utilities and hooks (\`useTheme\`). Event handlers prefixed with \`handle\` or passed as \`onX\` props.
+When naming variables and constants, follow: camelCase locals; SCREAMING_SNAKE only for true constants. Prefer \`const\` and narrow types with \`satisfies\` where helpful.
+
+When organizing modules and directories, follow this layout: Routes and layouts live in \`app/\` (App Router). Shared UI primitives live in \`components/ui/\` (shadcn). Shared helpers in \`lib/\` (e.g. \`lib/utils.ts\` with \`cn()\`). Global styles in \`app/globals.css\`; Tailwind v4 via \`@tailwindcss/postcss\`.
+
+When handling errors and API failures, follow: Use \`try/catch\` in Server Actions and surface user-facing errors with Sonner toasts on the client. Prefer returning typed Result-like objects from server utilities when batching work.
+When managing client or server state, follow: React state and context for local UI; server state from \`fetch\` in Server Components. No global client store unless a route truly needs it.
+When adding or changing tests, follow: Vitest + Testing Library for components; colocate \`*.test.tsx\` next to components or under \`__tests__/\`. Run \`pnpm test\` from repo root.
+
+Prefer these libraries when they already solve the problem: next, react, tailwindcss, @radix-ui/react-slot, class-variance-authority, clsx, tailwind-merge.
+Use pnpm for installs and scripts.
+
+When working near or extending "cn() helper" (lib/utils.ts), Merge Tailwind classes with \`tailwind-merge\` to avoid conflicting utilities.
+
+When working near or extending "Button variants" (components/ui/button.tsx), Use \`class-variance-authority\` (cva) for size and variant props on shadcn \`Button\`.
+
+When working near or extending "App layout shell" (app/layout.tsx), Root layout wraps providers (\`ThemeProvider\`, \`Toaster\`) and font loading.
+
+Do not do the following:
+- Do not hand-edit \`components.json\` or generated shadcn files without running the CLI.
+- Avoid fetching in Client Components when the same data can be loaded in a Server Component.
+- Do not add new CSS files per page; extend Tailwind tokens or use \`cn()\` instead.
+
+For the recurring task "Add a shadcn UI primitive", follow this procedure exactly:
+1. Run \`pnpm dlx shadcn@latest add <component>\` from the repo root.
+2. Import from \`@/components/ui/<component>\` in your feature code.
+3. Use \`cn()\` from \`@/lib/utils\` when merging classes.
+4. Run \`pnpm lint\` and \`pnpm test\` before opening a PR."
+`;
