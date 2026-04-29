@@ -15,6 +15,8 @@
 <p align="center">
   <a href="#examples">Examples</a>
   ·
+  <a href="#installation">Install</a>
+  ·
   <a href="#cli">CLI</a>
   ·
   <a href="https://skillsmith.vercel.app">Web</a>
@@ -35,14 +37,63 @@
 > [!NOTE]
 > **Most AI coding tools fail on real codebases** because they don’t know your project’s conventions. Skillsmith reads your repo, extracts the conventions, and generates rules files your assistant can actually use.
 
-## Quick start
+## Installation
+
+Skillsmith is a **Node.js CLI** ([package on npm](https://www.npmjs.com/package/skillsmith)). You run it in a terminal on your machine.
+
+### 1. Prerequisites
+
+- **Node.js 18+** and npm (bundled with Node). Check with `node -v` and `npm -v`.
+- **An LLM API key** for [Anthropic](https://console.anthropic.com) or [OpenAI](https://platform.openai.com), *or* [Ollama](https://ollama.com) installed locally (no cloud key).
+
+### 2. Install the CLI
+
+**Option A — no global install (recommended):** use **npx** so you always pick up the published version:
 
 ```bash
-export ANTHROPIC_API_KEY=sk-ant-...   # or OPENAI_API_KEY; Ollama needs no key
+npx skillsmith --version
+```
+
+**Option B — install globally** if you want the `skillsmith` command on your `PATH`:
+
+```bash
+npm install -g skillsmith
+skillsmith --version
+```
+
+### 3. API key
+
+Pick one:
+
+- **Environment variable** (good for one-off runs and CI):
+
+  ```bash
+  export ANTHROPIC_API_KEY=sk-ant-...   # or OPENAI_API_KEY
+  ```
+
+- **Interactive config** (writes `~/.skillsmith/config.json`):
+
+  ```bash
+  skillsmith init
+  ```
+
+Ollama: use `-p ollama` and skip the key; optional: `ollama pull llama3.1`.
+
+### 4. Run it
+
+From a **git repository root** (your project):
+
+```bash
 npx skillsmith . --yes
 ```
 
-That analyzes the current directory and writes **`.claude/CLAUDE.md`** (Claude Code layout), `.cursorrules`, `AGENTS.md`, and `.github/copilot-instructions.md`. By default it also writes **task subagents**: **`agents.json`**, **`.claude/agents/*.md`** (Claude Code), and optionally **`.cursor/rules/skillsmith-*.mdc`** if you pass **`--cursor`**. Point at a remote repo with `npx skillsmith vercel/ai-chatbot --yes`.
+Or analyze a **GitHub** repo without cloning first:
+
+```bash
+npx skillsmith vercel/ai-chatbot --yes
+```
+
+That writes **`.claude/CLAUDE.md`**, `.cursorrules`, `AGENTS.md`, and `.github/copilot-instructions.md`. By default it also writes **task subagents**: **`agents.json`**, **`.claude/agents/*.md`**, and optionally **`.cursor/rules/skillsmith-*.mdc`** if you add **`--cursor`**.
 
 ### Claude Code file layout & `--scope`
 
@@ -69,7 +120,7 @@ The CLI creates **`.claude/`** under the output directory when needed. Global sc
 
 ## API keys
 
-Skillsmith uses **your** Anthropic, OpenAI, or local Ollama setup. That means:
+Skillsmith uses **your** Anthropic, OpenAI, or local Ollama account — see **[Installation](#installation)** above for env vars and `skillsmith init`.
 
 - Your repo snapshot is sent **only** to the provider you choose — not through Skillsmith-hosted inference.
 - You pay **your** provider directly (roughly **~$0.20** per typical run on Claude-class models) — no markup, no subscription to us.
